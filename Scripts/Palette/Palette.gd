@@ -117,10 +117,8 @@ func deserialize(input_string : String): # -> Palette
 		if data.has("name"): # If data is 'valid' palette file
 			result = get_script().new()
 			result.name = data.name
-			if data.has("comments"):
-				result.comments = data.comments
-			if data.has("editable"):
-				result.editable = data.editable
+			if data.has("comments"): result.comments = data.comments
+			if data.has("editable"): result.editable = data.editable
 			for color_data in data.colors:
 				result.add_color(color_data.data, color_data.name)
 

@@ -57,12 +57,9 @@ func _ready() -> void:
 	if Global.canvases[0] == self:
 		camera_zoom()
 
-	line_2d = Line2D.new()
-	line_2d.width = 0.5
-	line_2d.default_color = Color.darkgray
-	line_2d.add_point(previous_mouse_pos_for_lines)
-	line_2d.add_point(previous_mouse_pos_for_lines)
-	add_child(line_2d)
+		#sprite.lock()
+		var tex := ImageTexture.new()
+		tex.create_from_image(sprite, 0)
 
 func _draw() -> void:
 	draw_texture_rect(Global.transparent_background, Rect2(location, size), true) # Draw transparent background
@@ -531,7 +528,81 @@ func update_texture(layer_index : int) -> void:
 	frame_texture_rect = Global.find_node_by_name(Global.layers[layer_index][3].get_child(frame),"FrameTexture")
 	frame_texture_rect.texture = layers[layer_index][1]
 
-func pencil_and_eraser(sprite : Image, mouse_pos : Vector2, color : Color, current_mouse_button : String, current_action := "None") -> void:
+	#Draw current frame layers
+	for texture in layers:
+		if texture[3]: #if it's visible
+			draw_texture(texture[1], location)
+
+			if Global.tile_mode:
+				draw_texture(texture[1], Vector2(location.x, location.y + size.y)) #Down
+				draw_texture(texture[1], Vector2(location.x - size.x, location.y + size.y)) #Down Left
+				draw_texture(texture[1], Vector2(location.x - size.x, location.y)) #Left
+				draw_texture(texture[1], location - size) #Up left
+				draw_texture(texture[1], Vector2(location.x, location.y - size.y)) #Up
+				draw_texture(texture[1], Vector2(location.x + size.x, location.y - size.y)) #Up right
+				draw_texture(texture[1], Vector2(location.x + size.x, location.y)) #Right
+				draw_texture(texture[1], location + size) #Down right
+
+	#Idea taken from flurick (on GitHub)
+	if Global.draw_grid:
+		for x in range(0, size.x, Global.grid_width):
+			draw_line(Vector2(x, location.y), Vector2(x, size.y), Global.grid_color, true)
+		for y in range(0, size.y, Global.grid_height):
+			draw_line(Vector2(location.x, y), Vector2(size.x, y), Global.grid_color, true)
+
+	#Draw rectangle to indicate the pixel currently being hovered on
+	var mouse_pos := get_local_mouse_position() + location
+	if point_in_rectangle(mouse_pos, location, location + size):
+		mouse_pos = mouse_pos.floor()
+		if Global.left_square_indicator_visible and Global.can_draw:
+			if Global.current_left_brush_type == Global.BRUSH_TYPES.PIXEL:
+				if Global.current_left_tool == "Pencil" || Global.current_left_tool == "Eraser" || Global.current_left_tool == "LightenDarken":
+					var start_pos_x = mouse_pos.x - (Global.left_brush_size >> 1)
+					var start_pos_y = mouse_pos.y - (Global.left_brush_size >> 1)
+					draw_rect(Rect2(start_pos_x, start_pos_y, Global.left_brush_size, Global.left_brush_size), Color.blue, false)
+			else:
+				if Global.current_left_tool == "Pencil" || Global.current_left_tool == "Eraser":
+					var custom_brush_size = Global.custom_left_brush_image.get_size()  - Vector2.ONE
+					var dst := rectangle_center(mouse_pos, custom_brush_size)
+					draw_texture(Global.custom_left_brush_texture, dst)
+
+		if Global.right_square_indicator_visible and Global.can_draw:
+			if Global.current_right_brush_type == Global.BRUSH_TYPES.PIXEL:
+				if Global.current_right_tool == "Pencil" || Global.current_right_tool == "Eraser" || Global.current_left_tool == "LightenDarken":
+					var start_pos_x = mouse_pos.x - (Global.right_brush_size >> 1)
+					var start_pos_y = mouse_pos.y - (Global.right_brush_size >> 1)
+					draw_rect(Rect2(start_pos_x, start_pos_y, Global.right_brush_size, Global.right_brush_size), Color.red, false)
+			else:
+				if Global.current_right_tool == "Pencil" || Global.current_right_tool == "Eraser":
+					var custom_brush_size = Global.custom_right_brush_image.get_size()  - Vector2.ONE
+					var dst := rectangle_center(mouse_pos, custom_brush_size)
+					draw_texture(Global.custom_right_brush_texture, dst)
+
+func generate_layer_panels() -> void:
+	for child in Global.vbox_layer_container.get_children():
+		if child is LayerContainer:
+			child.queue_free()
+
+	current_layer_index = layers.size() - 1
+	if layers.size() == 1:
+		Global.remove_layer_button.disabled = true
+		Global.remove_layer_button.mouse_default_cursor_shape = Control.CURSOR_FORBIDDEN
+	else:
+		Global.remove_layer_button.disabled = false
+		Global.remove_layer_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+	for i in range(layers.size() -1, -1, -1):
+		var layer_container = load("res://Prefabs/LayerContainer.tscn").instance()
+		if !layers[i][2]:
+			layers[i][2] = "Layer %s" % i
+		layer_container.i = i
+		layer_container.get_child(1).get_child(0).texture = layers[i][1]
+		layer_container.get_child(1).get_child(1).text = layers[i][2]
+		layer_container.get_child(1).get_child(2).text = layers[i][2]
+		#layers[i][3] = true #set visible
+		Global.vbox_layer_container.add_child(layer_container)
+
+func pencil_and_eraser(mouse_pos : Vector2, color : Color, current_mouse_button : String, current_action := "None") -> void:
 	if made_line:
 		return
 	if is_making_line:

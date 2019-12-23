@@ -45,7 +45,8 @@ func _ready() -> void:
 		"Open..." : KEY_MASK_CMD + KEY_O,
 		"Save..." : KEY_MASK_CMD + KEY_S,
 		"Save as..." : KEY_MASK_SHIFT + KEY_MASK_CMD + KEY_S,
-		"Import PNG..." : KEY_MASK_CMD + KEY_I,
+		"Import Image..." : KEY_MASK_CMD + KEY_I,
+		"Import ..." : 0,
 		"Export PNG..." : KEY_MASK_CMD + KEY_E,
 		"Export PNG as..." : KEY_MASK_SHIFT + KEY_MASK_CMD + KEY_E,
 		"Quit" : KEY_MASK_CMD + KEY_Q
@@ -228,21 +229,27 @@ func file_menu_id_pressed(id : int) -> void:
 			is_quitting_on_save = false
 			$SaveSprite.popup_centered()
 			Global.can_draw = false
-		4: # Import
+		4: #Import Image
 			$ImportSprites.popup_centered()
 			Global.can_draw = false
 			opensprite_file_selected = false
-		5: # Export
-			if $ExportSprites.current_export_path == "":
+		5: #Import
+			$ImportSpecial.popup_centered()
+			Global.can_draw = false
+			
+			pass
+		6: #Export
+			if current_export_path == "":
 				$ExportSprites.popup_centered()
 				Global.can_draw = false
 			else:
-				$ExportSprites.export_project()
-		6: # Export as
+				export_project()
+		7: #Export as
 			$ExportSprites.popup_centered()
 			Global.can_draw = false
-		7: # Quit
-			show_quit_dialog()
+		8: #Quit
+			$QuitDialog.popup_centered()
+			Global.can_draw = false
 
 func edit_menu_id_pressed(id : int) -> void:
 	match id:
@@ -574,6 +581,26 @@ func _on_SaveSprite_file_selected(path : String) -> void:
 	if is_quitting_on_save:
 		_on_QuitDialog_confirmed()
 
+func _on_ImportSpecial_file_selected(path) -> void:
+	var data = Import.import_aseprite(path)
+	if data:
+		if data.has("error"):
+			# Display Error here
+			return
+		clear_canvases()
+		if data.canvases.size() > 0:
+			Global.canvas = data.canvases[0]
+			Global.canvases = data.canvases
+			Global.hidden_canvases = data.hidden_canvases
+			#Global.current_frame = 0
+			Global.undo_redo.clear_history(false)
+			
+			for canvas in data.canvases:
+				Global.canvas_parent.add_child(canvas)
+				if !Global.frame_container.is_a_parent_of(canvas.frame_button):
+					Global.frame_container.add_child(canvas.frame_button)
+	pass
+
 func clear_canvases() -> void:
 	for child in Global.canvas_parent.get_children():
 		if child is Canvas:
@@ -589,6 +616,9 @@ func clear_canvases() -> void:
 func _on_ImportSprites_popup_hide() -> void:
 	if !opensprite_file_selected:
 		Global.can_draw = true
+
+func _on_ImportSpecial_popup_hide() -> void:
+	Global.can_draw = true
 
 func _on_ViewportContainer_mouse_entered() -> void:
 	Global.has_focus = true
@@ -818,3 +848,32 @@ func _on_QuitDialog_confirmed() -> void:
 	modulate = Color(0.5, 0.5, 0.5)
 
 	get_tree().quit()
+
+func _on_PaletteOptionButton_item_selected(ID) -> void:
+	var palette_name = Global.palette_option_button.get_item_metadata(ID)
+	Global.palette_container.on_palette_select(palette_name)
+
+func _on_EditPalette_pressed() -> void:
+	Global.palette_container.on_edit_palette()
+	pass
+
+func _on_RemovePalette_pressed() -> void:
+	Global.palette_container.remove_current_palette()
+	pass
+
+func add_palette_menu_id_pressed(id) -> void:
+	match id:
+		0:	# New Empty Palette
+			Global.palette_container.on_new_empty_palette()
+		1:	# Import Palette
+			Global.palette_container.on_import_palette()
+	pass
+
+func _on_NewPaletteDialog_confirmed() -> void:
+	Global.palette_container.on_new_palette_confirmed()
+	pass
+
+func _on_PaletteImportFileDialog_file_selected(path) -> void:
+	Global.palette_container.on_palette_import_file_selected(path)
+	pass
+
