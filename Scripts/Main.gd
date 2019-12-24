@@ -582,23 +582,24 @@ func _on_SaveSprite_file_selected(path : String) -> void:
 		_on_QuitDialog_confirmed()
 
 func _on_ImportSpecial_file_selected(path) -> void:
-	var data = Import.import_aseprite(path)
-	if data:
-		if data.has("error"):
-			# Display Error here
-			return
-		clear_canvases()
-		if data.canvases.size() > 0:
-			Global.canvas = data.canvases[0]
-			Global.canvases = data.canvases
-			Global.hidden_canvases = data.hidden_canvases
-			#Global.current_frame = 0
-			Global.undo_redo.clear_history(false)
-			
-			for canvas in data.canvases:
-				Global.canvas_parent.add_child(canvas)
-				if !Global.frame_container.is_a_parent_of(canvas.frame_button):
-					Global.frame_container.add_child(canvas.frame_button)
+	if path.ends_with(".aseprite"):
+		var data = Import.import_aseprite(path)
+		if data:
+			if data.has("error"):
+				# Display Error here
+				return
+			clear_canvases()
+			if data.canvases.size() > 0:
+				Global.canvas = data.canvases[0]
+				Global.canvases = data.canvases
+				Global.hidden_canvases = data.hidden_canvases
+				#Global.current_frame = 0
+				Global.undo_redo.clear_history(false)
+				
+				for canvas in data.canvases:
+					Global.canvas_parent.add_child(canvas)
+					if !Global.frame_container.is_a_parent_of(canvas.frame_button):
+						Global.frame_container.add_child(canvas.frame_button)
 	pass
 
 func clear_canvases() -> void:
